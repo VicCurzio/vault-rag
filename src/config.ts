@@ -38,10 +38,26 @@ const excluded = (process.env.EXCLUDE_PATHS ?? "")
   .map((entry) => entry.trim().replaceAll("\\", "/").replace(/^\/|\/$/g, ""))
   .filter(Boolean);
 
+// Carpetas cuyas notas son historia y no estado: siguen siendo buscables, pero
+// con menos peso. Se comparan por segmento de ruta, no por prefijo, porque
+// aparecen en cualquier nivel del arbol.
+const demoted = (process.env.DEMOTE_PATHS ?? "")
+  .split(",")
+  .map((entry) => entry.trim().replaceAll("\\", "/").replace(/^\/|\/$/g, "").toLowerCase())
+  .filter(Boolean);
+
 export const config = {
   databaseUrl: required("DATABASE_URL"),
   vaultPath: required("VAULT_PATH"),
   excluded,
+  demoted,
+  isDemoted(path: string): boolean {
+    const segments = path.replaceAll("\\", "/").toLowerCase().split("/");
+    return demoted.some((entry) => segments.includes(entry));
+  },
+  // Cuanto se le baja el puntaje a esas notas. 1 las deja iguales, 0 las hunde.
+  // El numero sale de medir con el eval, no de elegirlo.
+  demoteFactor: Number(process.env.DEMOTE_FACTOR ?? 0.7),
   // Una ruta queda afuera si es el prefijo exacto, para que "Clientes" excluya
   // "Clientes/Acme/nota.md" pero no "Clientes-publicos/nota.md".
   isExcluded(path: string): boolean {

@@ -61,6 +61,17 @@ if (config.excluded.length > 0) {
   console.log(`${all.length - allowed.length} notas excluidas por EXCLUDE_PATHS.`);
 }
 
+// La marca de "esto es historia" se recalcula siempre, sobre todas las notas ya
+// guardadas: depende de la ruta y no del contenido, asi que cambiar
+// DEMOTE_PATHS no tiene por que obligar a volver a calcular ningun vector.
+if (config.demoted.length > 0) {
+  const stored = await pool.query<{ id: string; path: string }>("select id, path from notes");
+  const ids = stored.rows.filter((row) => config.isDemoted(row.path)).map((row) => row.id);
+
+  await pool.query("update notes set demoted = (id = any($1::bigint[]))", [ids]);
+  console.log(`${ids.length} notas marcadas como historia por DEMOTE_PATHS.`);
+}
+
 let indexed = 0;
 let skipped = 0;
 let chunkCount = 0;

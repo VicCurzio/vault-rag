@@ -68,6 +68,13 @@ Primera corrida sobre 340 notas y 5338 pedazos:
 | El pedazo se embebe con su titulo y encabezado adelante | **71%** | 0% |
 | Umbral de rechazo medido en vez de estimado | 71% | **100%** |
 | Busqueda hibrida (semantica + palabras exactas) | 71% | 100% |
+| Set de evals de 9 a 34 preguntas | 79% | 100% |
+| Tope de dos pedazos por nota | 79% | 100% |
+| Menos peso a las notas de registro diario | **89%** | 100% |
+
+Las tres primeras filas se midieron con nueve preguntas, que es muy poco: una
+que entra o sale mueve el numero catorce puntos. De la cuarta en adelante son
+treinta y cuatro. **El 79% y el 71% no se comparan**: cambio la vara.
 
 Tres cosas que solo aparecieron por medir:
 
@@ -84,13 +91,29 @@ Tres cosas que solo aparecieron por medir:
    une los terminos con AND: una pregunta de siete palabras exige que las siete
    esten en el mismo pedazo. Medido: 0 resultados con AND, 666 con OR.
 
-La hibrida todavia no paga: cambia que preguntas acierta, no cuantas. **Con el
-set de evals actual no se puede decidir si conviene**, y ese es el limite real
-del proyecto hoy: un set chico mueve el porcentaje mas que cualquier mejora.
+Y dos que aparecieron al agrandar el set:
+
+4. **Una sola nota se llevaba los cinco lugares**, con cinco pedazos suyos, y la
+   nota que tenia la respuesta no entraba por falta de espacio. El tope por nota
+   arreglo eso **sin mover el recall**: los lugares liberados se los llevaron
+   otras notas equivocadas. Se mantiene igual, porque el agente recibia el mismo
+   texto cinco veces, pero no hay que contarlo como una mejora de recuperacion.
+5. **El registro diario se come todo.** Son el 41% de las notas, son largos y
+   repiten el vocabulario del proyecto, asi que las notas cortas y al grano
+   pierden siempre. Bajarles el peso subio el recall de 86% a 89%.
+
+El factor de ese ultimo cambio se eligio midiendo, no a ojo: 1.0 da 86%, la
+meseta entre 0.8 y 0.5 da 89%, y 0.3 cae a 82%. **Las dos preguntas que se
+rompen en 0.3 son exactamente las dos cuya respuesta vive en un registro
+diario**, que es lo que uno predeciria si el mecanismo hace lo que dice.
+
+La busqueda hibrida sigue sin tener una medicion propia que la justifique:
+cambia que preguntas acierta, no cuantas. Es lo proximo a aislar.
 
 ## Estado
 
-Indexacion incremental, busqueda hibrida, agente con una herramienta y evals de
+Indexacion incremental, busqueda hibrida con tope por nota y menos peso al
+registro diario, agente con una herramienta y evals de
 recuperacion. Pendiente: evals sobre la respuesta generada (no solo sobre lo que
 se recupera), reordenamiento de resultados, y mas preguntas antes de seguir
 tocando perillas.

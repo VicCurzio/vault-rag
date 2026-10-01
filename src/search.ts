@@ -6,6 +6,7 @@
 // modelo que genere nada: si la busqueda no trae el pedazo correcto, ningun
 // modelo va a poder contestar bien por mas buen prompt que tenga.
 
+import { config } from "./config.ts";
 import { pool, toVector } from "./db.ts";
 import { embedOne } from "./embed.ts";
 
@@ -27,6 +28,10 @@ export type Hit = {
 // chance de rescatar algo que una sola de las dos hundio, y cuesta poco: el
 // trabajo caro (el embedding de la pregunta) ya se hizo.
 const POOL_SIZE = 50;
+
+// Cuantos pedazos de una misma nota pueden ocupar lugar en el resultado. Dos
+// deja contexto suficiente de la nota que acerto sin tapar a las demas.
+const MAX_PER_NOTE = 2;
 
 // Busqueda hibrida: semantica y por palabras exactas, fusionadas por posicion.
 //
@@ -73,16 +78,34 @@ export async function search(question: string, limit = 5): Promise<Hit[]> {
               coalesce(1.0 / (60 + s.rank), 0) + coalesce(1.0 / (60 + k.rank), 0) as score
          from semantic s
          full outer join keyword k on k.id = s.id
+     ),
+     -- Tope de pedazos por nota.
+     --
+     -- Sin esto una nota larga se lleva los cinco lugares con cinco pedazos
+     -- suyos, y la nota que tiene la respuesta no entra por falta de espacio.
+     -- Medido: la pregunta por el hook de acentos devolvia cinco veces el mismo
+     -- worklog. El problema no era encontrar, era mostrar.
+     ranked as (
+       select n.path, n.title, c.heading, c.content,
+              c.embedding <=> $1 as distance,
+              -- Las notas marcadas como historia valen menos. No se excluyen:
+              -- una pregunta que de verdad es sobre lo que paso un dia sigue
+              -- pudiendo traer su registro, solo que tiene que ganarlo.
+              f.score * (case when n.demoted then $6::float else 1 end) as score,
+              row_number() over (
+                partition by c.note_id
+                order by f.score desc, c.embedding <=> $1
+              ) as per_note
+         from fused f
+         join chunks c on c.id = f.id
+         join notes n on n.id = c.note_id
      )
-     select n.path, n.title, c.heading, c.content,
-            c.embedding <=> $1 as distance,
-            f.score
-       from fused f
-       join chunks c on c.id = f.id
-       join notes n on n.id = c.note_id
-      order by f.score desc, distance asc
+     select path, title, heading, content, distance, score
+       from ranked
+      where per_note <= $5
+      order by score desc, distance asc
       limit $4`,
-    [vector, question, POOL_SIZE, limit],
+    [vector, question, POOL_SIZE, limit, MAX_PER_NOTE, config.demoteFactor],
   );
 
   return result.rows.map((row) => ({
