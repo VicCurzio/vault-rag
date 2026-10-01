@@ -1,0 +1,28 @@
+{
+  "name": "vault-rag",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Busqueda semantica y agente de preguntas sobre un vault de notas en markdown",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "migrate": "node --experimental-strip-types --no-warnings src/migrate.ts",
+    "ingest": "node --experimental-strip-types --no-warnings src/ingest.ts",
+    "search": "node --experimental-strip-types --no-warnings src/search.ts",
+    "ask": "node --experimental-strip-types --no-warnings src/cli.ts",
+    "eval": "node --experimental-strip-types --no-warnings evals/run.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "@huggingface/transformers": "^4.3.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "typescript": "^7.0.2"
+  }
+}

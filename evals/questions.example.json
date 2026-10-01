@@ -1,0 +1,37 @@
+[
+  {
+    "_comentario": "Copiar este archivo a questions.json y escribir preguntas sobre las notas propias. `expect` es un pedazo de la ruta de la nota que deberia aparecer, o una lista si el dato vive en mas de una. `expect: null` marca una pregunta que NO tiene respuesta en las notas: son las que prueban que el sistema sabe decir que no sabe, y sin ellas una corrida verde no significa nada."
+  },
+  {
+    "question": "por que se eligio esa base de datos y que alternativas se descartaron",
+    "expect": "Decisions/0001"
+  },
+  {
+    "question": "como se evita que un reintento del cliente duplique una escritura",
+    "expect": "Decisions/0006"
+  },
+  {
+    "question": "donde se publica el front y por que no vive en el mismo servidor que la API",
+    "expect": ["Decisions/0002", "Architecture"]
+  },
+  {
+    "question": "que pasos hay que seguir para arrancar un proyecto nuevo",
+    "expect": "Templates/New-Project-Setup"
+  },
+  {
+    "question": "en que carpeta se registra lo que se hizo cada dia",
+    "expect": "AGENTS.md"
+  },
+  {
+    "question": "cual es la receta del locro",
+    "expect": null
+  },
+  {
+    "question": "cuantos goles hizo Maradona en el mundial 86",
+    "expect": null
+  },
+  {
+    "question": "cual es la capital de Mongolia",
+    "expect": null
+  }
+]
