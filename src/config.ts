@@ -26,9 +26,31 @@ function required(name: string): string {
   return value;
 }
 
+// Carpetas o archivos que no se indexan nunca, por prefijo de ruta relativa al
+// vault y separados por coma.
+//
+// Importa aunque todo corra local: la busqueda y los embeddings no salen de la
+// maquina, pero `ask` manda al modelo los fragmentos que encontro. Lo que no
+// esta indexado no puede viajar, y esa es la unica garantia que no depende de
+// acordarse de nada.
+const excluded = (process.env.EXCLUDE_PATHS ?? "")
+  .split(",")
+  .map((entry) => entry.trim().replaceAll("\\", "/").replace(/^\/|\/$/g, ""))
+  .filter(Boolean);
+
 export const config = {
   databaseUrl: required("DATABASE_URL"),
   vaultPath: required("VAULT_PATH"),
+  excluded,
+  // Una ruta queda afuera si es el prefijo exacto, para que "Clientes" excluya
+  // "Clientes/Acme/nota.md" pero no "Clientes-publicos/nota.md".
+  isExcluded(path: string): boolean {
+    const normalized = path.replaceAll("\\", "/").toLowerCase();
+    return excluded.some((entry) => {
+      const prefix = entry.toLowerCase();
+      return normalized === prefix || normalized.startsWith(`${prefix}/`);
+    });
+  },
   // Opcional a proposito: la busqueda y los evals corren sin clave.
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
   // El modelo y la dimension van juntos: cambiar uno obliga a cambiar el otro

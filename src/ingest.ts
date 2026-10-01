@@ -36,8 +36,30 @@ async function walk(dir: string, found: string[] = []): Promise<string[]> {
   return found;
 }
 
-const files = (await walk(config.vaultPath)).slice(0, limit);
-console.log(`${files.length} notas encontradas en ${config.vaultPath}`);
+const toRelative = (file: string) => relative(config.vaultPath, file).replaceAll("\\", "/");
+
+const all = await walk(config.vaultPath);
+const allowed = all.filter((file) => !config.isExcluded(toRelative(file)));
+const files = allowed.slice(0, limit);
+
+console.log(`${all.length} notas encontradas en ${config.vaultPath}`);
+
+// Excluir en el proximo indexado no alcanza: lo que ya esta guardado sigue
+// estando, y seguiria saliendo en las busquedas. Agregar una carpeta a
+// EXCLUDE_PATHS tiene que sacarla, no solo dejar de agregarla.
+if (config.excluded.length > 0) {
+  const stored = await pool.query<{ id: string; path: string }>("select id, path from notes");
+  const toRemove = stored.rows.filter((row) => config.isExcluded(row.path));
+
+  if (toRemove.length > 0) {
+    await pool.query("delete from notes where id = any($1::bigint[])", [
+      toRemove.map((row) => row.id),
+    ]);
+    console.log(`${toRemove.length} notas ya indexadas se borraron por EXCLUDE_PATHS.`);
+  }
+
+  console.log(`${all.length - allowed.length} notas excluidas por EXCLUDE_PATHS.`);
+}
 
 let indexed = 0;
 let skipped = 0;
@@ -45,7 +67,7 @@ let chunkCount = 0;
 
 for (const file of files) {
   const raw = readFileSync(file, "utf8");
-  const path = relative(config.vaultPath, file).replaceAll("\\", "/");
+  const path = toRelative(file);
   const hash = createHash("sha256").update(raw).digest("hex");
 
   const existing = await pool.query<{ id: string; hash: string }>(
