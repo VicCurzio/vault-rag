@@ -74,6 +74,18 @@ export const config = {
   embeddingModel: "Xenova/multilingual-e5-small",
   embeddingDimensions: 384,
   answerModel: "claude-sonnet-5",
+  // Segundo modelo, el que reordena. Multilingue (XLM-RoBERTa), que es lo que
+  // lo hace servible sobre notas en castellano.
+  rerankModel: "Xenova/bge-reranker-base",
+  // **Apagado por defecto, y es una decision medida.** Con 20 candidatos da
+  // el mismo recall que sin reordenar (89%) y cuesta veinte pasadas de modelo
+  // por pregunta; con 40 baja a 86%. Se enciende con RERANK=1 para volver a
+  // medirlo, por ejemplo si cambia el modelo o el corpus.
+  rerank: process.env.RERANK === "1",
+  // Cuantos candidatos se le pasan al reordenador. Mas alto da mas chances de
+  // rescatar algo que la busqueda dejo en el puesto quince, y cuesta lineal:
+  // el reordenador corre una vez por candidato y no se puede precalcular.
+  rerankPool: Number(process.env.RERANK_POOL ?? 20),
   // Arriba de esta distancia no se considera que haya respuesta en las notas.
   //
   // El 0.15 esta medido, no elegido: con el set de evals del 2026-10-01 las

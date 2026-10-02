@@ -110,6 +110,32 @@ diario**, que es lo que uno predeciria si el mecanismo hace lo que dice.
 La busqueda hibrida sigue sin tener una medicion propia que la justifique:
 cambia que preguntas acierta, no cuantas. Es lo proximo a aislar.
 
+## Lo que se probo y no quedo: reordenar con un segundo modelo
+
+`src/rerank.ts` existe y anda, pero **esta apagado** (`RERANK=1` lo enciende).
+Es un modelo de otra clase: en vez de convertir pregunta y texto por separado y
+comparar vectores, los lee juntos y dice que tan bien uno contesta al otro. Es
+la mejora que recomienda todo el mundo para esta etapa.
+
+| | recall@5 | costo |
+|---|---|---|
+| Sin reordenar | **89%** | nada |
+| Reordenando 20 candidatos | 89% | 20 pasadas de modelo por pregunta |
+| Reordenando 40 candidatos | 86% | 40 pasadas |
+
+**No mejora: baraja.** Con 40 candidatos la pregunta sobre el ORM empieza a
+aparecer, pero se rompen otras tres. Un modelo que cuesta veinte veces mas y
+devuelve el mismo numero no entra encendido.
+
+En el camino volvio a aparecer el mismo error de antes, mas adelante en la
+cadena: la primera version le pasaba al reordenador **el cuerpo del pedazo sin
+el titulo de la nota**, y eso solo bajo el recall de 89% a 68%. Un fragmento
+suelto no dice de que nota salio, lo lea quien lo lea.
+
+Lo que no se probo: el modelo corre cuantizado a 8 bits. Sin cuantizar seria
+bastante mas lento y podria ordenar mejor; queda como pregunta abierta, no como
+conclusion.
+
 ## Estado
 
 Indexacion incremental, busqueda hibrida con tope por nota y menos peso al

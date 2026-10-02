@@ -9,6 +9,7 @@
 import { config } from "./config.ts";
 import { pool, toVector } from "./db.ts";
 import { embedOne } from "./embed.ts";
+import { rerank } from "./rerank.ts";
 
 export type Hit = {
   path: string;
@@ -19,6 +20,8 @@ export type Hit = {
   // Despues de fusionar sigue siendo la distancia del vector, no el orden
   // final: se conserva porque es lo que decide si hay respuesta o no.
   distance: number;
+  // Puntaje del reordenado, cuando esta encendido. Mas grande es mejor.
+  rerankScore?: number;
   // Puntaje de la fusion. Mas grande es mejor. Solo sirve para comparar
   // resultados de una misma consulta.
   score: number;
@@ -43,6 +46,10 @@ const MAX_PER_NOTE = 2;
 // le gane a uno que aparece bien arriba en las dos.
 export async function search(question: string, limit = 5): Promise<Hit[]> {
   const vector = toVector(await embedOne(question, "query"));
+
+  // Con reordenado se traen mas candidatos de los que se van a devolver: el
+  // segundo modelo solo puede rescatar lo que le llega.
+  const fetchLimit = config.rerank ? Math.max(limit, config.rerankPool) : limit;
 
   const result = await pool.query<Hit>(
     `with semantic as (
@@ -105,14 +112,33 @@ export async function search(question: string, limit = 5): Promise<Hit[]> {
       where per_note <= $5
       order by score desc, distance asc
       limit $4`,
-    [vector, question, POOL_SIZE, limit, MAX_PER_NOTE, config.demoteFactor],
+    [vector, question, POOL_SIZE, fetchLimit, MAX_PER_NOTE, config.demoteFactor],
   );
 
-  return result.rows.map((row) => ({
+  const hits = result.rows.map((row) => ({
     ...row,
     distance: Number(row.distance),
     score: Number(row.score),
   }));
+
+  if (!config.rerank) return hits;
+
+  // El reordenado cambia el orden, no el contenido: la distancia de cada
+  // pedazo se conserva tal cual, porque es la que decide si hay respuesta.
+  // Se le pasa el mismo texto enriquecido que se indexo, no el cuerpo pelado.
+  // El reordenador lee la pregunta y el pasaje juntos, asi que si el pasaje no
+  // nombra el tema, el modelo tampoco puede saber de que nota salio. Es el
+  // mismo error que hundia la busqueda al principio, repetido mas adelante en
+  // la cadena, y cuesta lo mismo medirlo que suponerlo.
+  const scores = await rerank(
+    question,
+    hits.map((hit) => [hit.title, hit.heading, hit.content].filter(Boolean).join("\n")),
+  );
+
+  return hits
+    .map((hit, i) => ({ ...hit, rerankScore: scores[i] }))
+    .sort((a, b) => b.rerankScore - a.rerankScore)
+    .slice(0, limit);
 }
 
 // Se ejecuta solo cuando se llama al archivo directamente, no cuando lo
