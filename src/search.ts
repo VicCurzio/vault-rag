@@ -76,7 +76,9 @@ export async function search(question: string, limit = 5): Promise<Hit[]> {
      keyword as (
        select c.id, row_number() over (order by ts_rank(c.content_tsv, t.q) desc) as rank
          from chunks c, terms t
-        where c.content_tsv @@ t.q
+        -- Con $7 en falso esta rama no devuelve nada y la busqueda queda
+        -- puramente semantica. Es el control para medir si la hibrida aporta.
+        where $7::boolean and c.content_tsv @@ t.q
         order by ts_rank(c.content_tsv, t.q) desc
         limit $3
      ),
@@ -112,7 +114,7 @@ export async function search(question: string, limit = 5): Promise<Hit[]> {
       where per_note <= $5
       order by score desc, distance asc
       limit $4`,
-    [vector, question, POOL_SIZE, fetchLimit, MAX_PER_NOTE, config.demoteFactor],
+    [vector, question, POOL_SIZE, fetchLimit, MAX_PER_NOTE, config.demoteFactor, config.hybrid],
   );
 
   const hits = result.rows.map((row) => ({

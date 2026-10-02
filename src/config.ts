@@ -76,6 +76,9 @@ export const config = {
   answerModel: "claude-sonnet-5",
   // Segundo modelo, el que reordena. Multilingue (XLM-RoBERTa), que es lo que
   // lo hace servible sobre notas en castellano.
+  // Busqueda hibrida: semantica mas palabras exactas. HYBRID=0 deja solo la
+  // semantica, que es el control para medir si la rama de texto aporta.
+  hybrid: process.env.HYBRID !== "0",
   rerankModel: "Xenova/bge-reranker-base",
   // **Apagado por defecto, y es una decision medida.** Con 20 candidatos da
   // el mismo recall que sin reordenar (89%) y cuesta veinte pasadas de modelo

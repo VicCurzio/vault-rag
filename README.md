@@ -107,8 +107,23 @@ meseta entre 0.8 y 0.5 da 89%, y 0.3 cae a 82%. **Las dos preguntas que se
 rompen en 0.3 son exactamente las dos cuya respuesta vive en un registro
 diario**, que es lo que uno predeciria si el mecanismo hace lo que dice.
 
-La busqueda hibrida sigue sin tener una medicion propia que la justifique:
-cambia que preguntas acierta, no cuantas. Es lo proximo a aislar.
+## La busqueda hibrida, aislada
+
+`HYBRID=0` apaga la rama de palabras exactas y deja solo la semantica. Medido
+sobre el mismo set:
+
+| | recall@5 |
+|---|---|
+| Solo semantica | 82% |
+| Hibrida | **89%** |
+
+Arregla tres preguntas y rompe una. Las tres que arregla tienen la misma forma:
+**dependen de un termino literal** — "accesibilidad", "CV", "semi senior". El
+vector entiende el tema pero borronea las palabras; el indice de texto no
+entiende nada, pero esas las encuentra siempre. Por eso van las dos y no una.
+
+Vale la pena notar que con el set chico de nueve preguntas esta misma hibrida
+parecia no aportar nada. No cambio el sistema: cambio la vara.
 
 ## Lo que se probo y no quedo: reordenar con un segundo modelo
 
