@@ -47,7 +47,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
 ];
 
-async function runTool(input: { query: string; limit?: number }): Promise<string> {
+async function runTool(input: { query: string; limit?: number }): Promise<{ text: string; paths: string[] }> {
   const all = await search(input.query, input.limit ?? 5);
 
   // El corte por distancia se aplica aca y no en search(): la busqueda cruda
@@ -57,22 +57,30 @@ async function runTool(input: { query: string; limit?: number }): Promise<string
   const hits = all.filter((hit) => hit.distance <= config.absentThreshold);
 
   if (hits.length === 0) {
-    return all.length === 0
-      ? "Sin resultados."
-      : `Sin resultados suficientemente cercanos (el mas parecido quedo a ${all[0].distance.toFixed(3)}, y el corte es ${config.absentThreshold}). No hay respuesta a esto en las notas.`;
+    const text =
+      all.length === 0
+        ? "Sin resultados."
+        : `Sin resultados suficientemente cercanos (el mas parecido quedo a ${all[0].distance.toFixed(3)}, y el corte es ${config.absentThreshold}). No hay respuesta a esto en las notas.`;
+    return { text, paths: [] };
   }
 
-  return hits
+  const text = hits
     .map((hit, i) => {
       const where = hit.heading ? `${hit.title} > ${hit.heading}` : hit.title;
       return `[${i + 1}] ${where}\nruta: ${hit.path}\ndistancia: ${hit.distance.toFixed(3)}\n${hit.content}`;
     })
     .join("\n\n---\n\n");
+
+  return { text, paths: hits.map((hit) => hit.path) };
 }
 
 export type AgentResult = {
   answer: string;
   searches: string[];
+  // Las rutas que la herramienta llego a mostrarle. Sirven para una pregunta
+  // que no se puede contestar mirando solo el texto: una nota que cito, le
+  // llego de verdad, o se la invento?
+  sources: string[];
 };
 
 export async function ask(question: string, maxTurns = 6): Promise<AgentResult> {
@@ -83,6 +91,7 @@ export async function ask(question: string, maxTurns = 6): Promise<AgentResult> 
   const client = new Anthropic({ apiKey: config.anthropicApiKey });
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: question }];
   const searches: string[] = [];
+  const sources = new Set<string>();
 
   for (let turn = 0; turn < maxTurns; turn += 1) {
     const response = await client.messages.create({
@@ -104,7 +113,7 @@ export async function ask(question: string, maxTurns = 6): Promise<AgentResult> 
         .map((block) => block.text)
         .join("\n")
         .trim();
-      return { answer, searches };
+      return { answer, searches, sources: [...sources] };
     }
 
     const results: Anthropic.ToolResultBlockParam[] = [];
@@ -112,11 +121,9 @@ export async function ask(question: string, maxTurns = 6): Promise<AgentResult> 
     for (const use of toolUses) {
       const input = use.input as { query: string; limit?: number };
       searches.push(input.query);
-      results.push({
-        type: "tool_result",
-        tool_use_id: use.id,
-        content: await runTool(input),
-      });
+      const { text, paths } = await runTool(input);
+      for (const path of paths) sources.add(path);
+      results.push({ type: "tool_result", tool_use_id: use.id, content: text });
     }
 
     messages.push({ role: "user", content: results });
@@ -124,5 +131,9 @@ export async function ask(question: string, maxTurns = 6): Promise<AgentResult> 
 
   // Un tope de vueltas no es decoracion: sin el, un modelo que se traba
   // buscando lo mismo gasta hasta que alguien lo corta a mano.
-  return { answer: "Me quede sin vueltas de busqueda sin llegar a una respuesta.", searches };
+  return {
+    answer: "Me quede sin vueltas de busqueda sin llegar a una respuesta.",
+    searches,
+    sources: [...sources],
+  };
 }

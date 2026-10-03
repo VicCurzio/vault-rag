@@ -125,6 +125,35 @@ entiende nada, pero esas las encuentra siempre. Por eso van las dos y no una.
 Vale la pena notar que con el set chico de nueve preguntas esta misma hibrida
 parecia no aportar nada. No cambio el sistema: cambio la vara.
 
+## Evals de la respuesta, sin modelo juez
+
+`npm run eval:answers` mide lo que escribe el agente, no lo que recupera. Es el
+unico eval que necesita `ANTHROPIC_API_KEY`.
+
+Lo habitual para esto es pedirle a otro modelo que puntue la respuesta. Es caro,
+lento y opinable. **Aca no hace falta**, porque la regla del proyecto no es "que
+conteste bien" —eso no se puede medir sin criterio— sino **que no invente y que
+cite**, y eso es verdadero o falso:
+
+| Chequeo | Que pregunta |
+|---|---|
+| cita alguna nota | la respuesta nombra una fuente |
+| la nota citada existe | esa ruta esta de verdad en el indice |
+| se la habia mostrado | esa ruta vino de la busqueda, no de la imaginacion |
+| se planto sin inventar | ante una pregunta sin respuesta, dice que no sabe **y** no cita nada |
+
+Los tres primeros y el ultimo cortan la corrida si fallan: son el modo de falla
+que el sistema existe para evitar. "Cito la nota esperada" se informa pero **no**
+corta — ahi se mezcla la recuperacion, que ya tiene su propio eval, y una
+respuesta correcta sacada de otra nota no es una falla del agente.
+
+El reconocedor de citas tiene sus propios casos a mano, incluidos dos que **tiene
+que rechazar**: una respuesta que dice no saber pero igual cita algo, y una que
+nombra la nota sin dar la ruta. Uno de esos casos encontro un error antes de
+gastar una sola llamada al modelo: con los parentesis dentro del patron, "A
+(a/b.md) y B (c/d.md)" contaba **una** cita en vez de dos, porque el patron se
+comia el renglon entero y cerraba en el ultimo `.md`.
+
 ## Lo que se probo y no quedo: reordenar con un segundo modelo
 
 `src/rerank.ts` existe y anda, pero **esta apagado** (`RERANK=1` lo enciende).
